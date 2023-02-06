@@ -10,62 +10,21 @@
 
 #include <complex>
 
-class UserData
+struct UserData
 {
-public:
-    UserData(int precision);
+    double viewLeft;
     
-    bool getIsJuliaSet();
+    double viewRight;
     
-    std::complex<long double> getPointClicked();
+    double viewBottom;
     
-    bool getIsDrawingFrame();
+    double viewTop;
     
-    long double getScale();
-    
-    long double getTranslateX();
-    
-    long double getTranslateY();
-    
-    long double getZoom();
-    
-    long double getCentreX();
-    
-    long double getCentreY();
-    
-    void setIsJuliaSet(bool value = true);
-    
-    void setPointClicked(std::complex<long double> value);
-    
-    void setIsDrawingFrame(bool value = true);
-    
-    void setZoom(long double value);
-    
-    void setCentreX(long double value);
-    
-    void setCentreY(long double value);
-private:
     bool isJuliaSet;
     
-    std::complex<long double> pointClicked;
+    std::complex<double> pointClicked;
     
-    bool isDrawingFrame;
-    
-    int precision;
-    
-    long double zoom;
-    
-    long double centreX;
-    
-    long double centreY;
-    
-    long double scale;
-    
-    long double translateX;
-    
-    long double translateY;
-    
-    void setTransforms();
+    UserData();
 };
 
 #endif /* UserData_hpp */

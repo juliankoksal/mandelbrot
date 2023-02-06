@@ -10,6 +10,8 @@
 
 #include <array>
 
+constexpr int WINDOW_SIZE = 800;
+
 constexpr double PRECISION = 800;
 
 constexpr int MAX_ITERATION = 500;
@@ -20,9 +22,9 @@ constexpr int SECONDARY_BRIGHTNESS_EXP = 15;
 
 constexpr int SECONDARY_COLOUR_ITERATION_CUTOFF = 20;
 
-constexpr long double PAN_STEP = 0.1;
+constexpr double PAN_STEP = 0.1;
 
-constexpr long double ZOOM_STEP = 1.2;
+constexpr double ZOOM_STEP = 1.2;
 
 constexpr double POW(double base, int exponent)
 {

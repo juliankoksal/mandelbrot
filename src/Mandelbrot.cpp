@@ -17,42 +17,13 @@
 #include "UserData.hpp"
 
 /**
- * @brief Initializes the window and sets initial OpenGL state.
+ * @brief Draws a point at (x, y) with the colour determined by iteration.
  *
- * @return pointer to the window that was created
- */
-GLFWwindow* initialize()
-{
-    GLFWwindow* window = glfwCreateWindow(800, 800, "Mandelbrot Set", NULL,
-                                          NULL);
-    if (!window)
-    {
-        glfwTerminate();
-        return window;
-    }
-    glfwMakeContextCurrent(window);
-
-    // Viewing volume
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, PRECISION, 0, PRECISION, -1.0, 1.0);
-
-    glClearColor(0.0, 0.0, 0.5, 1.0);
-    
-    glClear(GL_COLOR_BUFFER_BIT);
-    glPointSize(2 * (800 / PRECISION));
-    
-    return window;
-}
-
-/**
- * @brief Draws a point at (pX, pY) with the colour determined by iteration.
- *
- * @param pX x-coordinate of the point in world coordinates
- * @param pY y-coordinate of the point in world coordinates
+ * @param x x-coordinate of the point
+ * @param y y-coordinate of the point
  * @param iteration number of iterations calculated for this point
  */
-inline void drawPoint(double pX, double pY, int iteration)
+inline void drawPoint(double x, double y, int iteration)
 {
     if (iteration == MAX_ITERATION)
     {
@@ -68,36 +39,19 @@ inline void drawPoint(double pX, double pY, int iteration)
         glColor3d(1.0, G_PRIMARY[iteration], B_PRIMARY[iteration]);
     }
 
-    glVertex2d(pX, pY);
+    glVertex2d(x, y);
 }
 
 /**
- * @brief Converts a world coordinate to a complex number.
- *
- * @param pX world x-coordinate
- * @param pY world y-coordinate
- * @param ud user data giving the scale and translation parameters
- *
- * @return complex number corresponding to (pX, pY)
- */
-inline std::complex<long double> worldCoordToComplex(int pX, int pY,
-                                                UserData* ud)
-{
-    long double x = (long double)pX * ud->getScale() + ud->getTranslateX();
-    long double y = (long double)pY * ud->getScale() + ud->getTranslateY();
-    return std::complex<long double>(x, y);
-}
-
-/**
- * @brief Iterates the Mandelbrot function for the given point.
+ * @brief Iterates the Mandelbrot function for the given value of c and z0.
  *
  * @param c constant
  * @param z initial value of z
  *
  * @return number of iterations to diverge, up to MAX_ITERATIONS
  */
-inline int iterate(const std::complex<long double>& c,
-                   std::complex<long double> z)
+inline int iterate(const std::complex<double>& c,
+                   std::complex<double> z)
 {
     int iteration = 0;
     while (std::norm(z) <= 4 && iteration < MAX_ITERATION)
@@ -116,13 +70,15 @@ inline int iterate(const std::complex<long double>& c,
  */
 void drawMandelbrotPoints(UserData* ud)
 {
+    double step = (ud->viewRight - ud->viewLeft) / PRECISION;
     for (int pX = 0; pX < PRECISION; ++pX)
     {
         for (int pY = 0; pY < PRECISION; ++pY)
         {
-            std::complex<long double> c(worldCoordToComplex(pX, pY, ud));
-            std::complex<long double> z0(0.0, 0.0);
-            drawPoint(pX, pY, iterate(c, z0));
+            std::complex<double> c(ud->viewLeft + (double)pX * step,
+                                        ud->viewBottom + (double)pY * step);
+            std::complex<double> z0(0.0, 0.0);
+            drawPoint(c.real(), c.imag(), iterate(c, z0));
         }
     }
 }
@@ -134,13 +90,15 @@ void drawMandelbrotPoints(UserData* ud)
  */
 void drawJuliaPoints(UserData* ud)
 {
+    double step = (ud->viewRight - ud->viewLeft) / PRECISION;
     for (int pX = 0; pX < PRECISION; ++pX)
     {
         for (int pY = 0; pY < PRECISION; ++pY)
         {
-            std::complex<long double> c(ud->getPointClicked());
-            std::complex<long double> z0(worldCoordToComplex(pX, pY, ud));
-            drawPoint(pX, pY, iterate(c, z0));
+            std::complex<double> c(ud->pointClicked);
+            std::complex<double> z0(ud->viewLeft + (double)pX * step,
+                                         ud->viewBottom + (double)pY * step);
+            drawPoint(z0.real(), z0.imag(), iterate(c, z0));
         }
     }
 }
@@ -153,9 +111,8 @@ void drawJuliaPoints(UserData* ud)
 void drawSet(GLFWwindow* window)
 {
     UserData* ud = (UserData*)glfwGetWindowUserPointer(window);
-    ud->setIsDrawingFrame();
     glBegin(GL_POINTS);
-    if (ud->getIsJuliaSet())
+    if (ud->isJuliaSet)
     {
         drawJuliaPoints(ud);
     }
@@ -165,15 +122,14 @@ void drawSet(GLFWwindow* window)
     }
     glEnd();
     glfwSwapBuffers(window);
-    ud->setIsDrawingFrame(false);
 }
 
 /**
  * @brief Callback function for key event.
  *
- * Adjusts user data according to the key pushed and redraws the set.
- *     up/down: translate up/down
- *     right/left: translate right/left
+ * Adjusts projection matrix according to the key pushed and redraws the set.
+ *     up/down: pan up/down
+ *     right/left: pan right/left
  *     x/z: zoom in/out
  */
 void keyCallback(GLFWwindow* window, int key, int scancode, int action,
@@ -182,33 +138,48 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action,
     if (action == GLFW_PRESS)
     {
         UserData* ud = ((UserData*)glfwGetWindowUserPointer(window));
-        if (ud->getIsDrawingFrame())
-        {
-            return;
-        }
+        double viewSize = (ud->viewRight - ud->viewLeft);
+        double pan = PAN_STEP * viewSize;
+        double viewCentreX = (ud->viewLeft + ud->viewRight) / 2.0;
+        double viewCentreY = (ud->viewBottom + ud->viewTop) / 2.0;
         switch (key)
         {
             case GLFW_KEY_UP:
-                ud->setCentreY(ud->getCentreY() + PAN_STEP / ud->getZoom());
+                ud->viewBottom += pan;
+                ud->viewTop += pan;
                 break;
             case GLFW_KEY_DOWN:
-                ud->setCentreY(ud->getCentreY() - PAN_STEP / ud->getZoom());
+                ud->viewBottom -= pan;
+                ud->viewTop -= pan;
                 break;
             case GLFW_KEY_RIGHT:
-                ud->setCentreX(ud->getCentreX() + PAN_STEP / ud->getZoom());
+                ud->viewLeft += pan;
+                ud->viewRight += pan;
                 break;
             case GLFW_KEY_LEFT:
-                ud->setCentreX(ud->getCentreX() - PAN_STEP / ud->getZoom());
+                ud->viewLeft -= pan;
+                ud->viewRight -= pan;
                 break;
             case GLFW_KEY_X:
-                ud->setZoom(ud->getZoom() * ZOOM_STEP);
+                viewSize /= 1.2;
+                ud->viewLeft = viewCentreX - viewSize / 2.0;
+                ud->viewRight = viewCentreX + viewSize / 2.0;
+                ud->viewBottom = viewCentreY - viewSize / 2.0;
+                ud->viewTop = viewCentreY + viewSize / 2.0;
                 break;
             case GLFW_KEY_Z:
-                ud->setZoom(ud->getZoom() / ZOOM_STEP);
+                viewSize *= 1.2;
+                ud->viewLeft = viewCentreX - viewSize / 2.0;
+                ud->viewRight = viewCentreX + viewSize / 2.0;
+                ud->viewBottom = viewCentreY - viewSize / 2.0;
+                ud->viewTop = viewCentreY + viewSize / 2.0;
                 break;
             default:
                 return;
         }
+        glLoadIdentity();
+        glOrtho(ud->viewLeft, ud->viewRight, ud->viewBottom, ud->viewTop, -1.0,
+                1.0);
         drawSet(window);
     }
 }
@@ -217,7 +188,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action,
  * @brief Callback function for mouse button event.
  *
  * Draws the Julia set for the point that was clicked or redraws the Mandelbrot
- * set if it is the second click.
+ * set if the window is clicked again.
  */
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
@@ -226,10 +197,48 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         UserData* ud = ((UserData*)glfwGetWindowUserPointer(window));
         double cursorX, cursorY;
         glfwGetCursorPos(window, &cursorX, &cursorY);
-        ud->setIsJuliaSet(!ud->getIsJuliaSet());
-        ud->setPointClicked(worldCoordToComplex(cursorX, cursorY, ud));
+        double scaleFactor = (ud->viewRight - ud->viewLeft) / WINDOW_SIZE;
+        cursorX = cursorX * scaleFactor + ud->viewLeft;
+        cursorY = (cursorY * scaleFactor + ud->viewBottom) * -1;
+        ud->pointClicked = std::complex<double>(cursorX, cursorY);
+        ud->isJuliaSet = !ud->isJuliaSet;
         drawSet(window);
     }
+}
+
+/**
+ * @brief Initializes the window and sets initial OpenGL state.
+ *
+ * @return pointer to the window that was created
+ */
+GLFWwindow* initialize()
+{
+    GLFWwindow* window = glfwCreateWindow(WINDOW_SIZE, WINDOW_SIZE,
+                                          "Mandelbrot Set", NULL, NULL);
+    if (!window)
+    {
+        glfwTerminate();
+        return window;
+    }
+    glfwMakeContextCurrent(window);
+    
+    UserData* ud = new UserData();
+    
+    glfwSetWindowUserPointer(window, ud);
+    glfwSetKeyCallback(window, keyCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+
+    glClearColor(0.0, 0.0, 0.5, 1.0);
+    
+    glClear(GL_COLOR_BUFFER_BIT);
+    glPointSize(2 * (800 / PRECISION));
+    
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(ud->viewLeft, ud->viewRight, ud->viewBottom, ud->viewTop, -1.0,
+            1.0);
+    
+    return window;
 }
 
 int main(int argc, const char* argv[])
@@ -244,31 +253,14 @@ int main(int argc, const char* argv[])
         return -1;
     }
     
-    UserData ud(PRECISION);
-    if (argc >= 2)
-    {
-        ud.setZoom(std::stold(argv[1]));
-    }
-    if (argc >= 3)
-    {
-        ud.setCentreX(std::stold(argv[2]));
-    }
-    if (argc >= 4)
-    {
-        ud.setCentreY(std::stold(argv[3]));
-    }
-    
-    glfwSetWindowUserPointer(window, &ud);
-    glfwSetKeyCallback(window, keyCallback);
-    glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    
     drawSet(window);
     
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
     }
-
+    
+    delete (UserData*)glfwGetWindowUserPointer(window);
     glfwDestroyWindow(window);
     glfwTerminate();
     

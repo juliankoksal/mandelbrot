@@ -7,9 +7,7 @@
 
 #define GL_SILENCE_DEPRECATION
 
-#include <iostream>
 #include <complex>
-#include <string>
 
 #include <GLFW/glfw3.h>
 
@@ -23,20 +21,23 @@
  * @param y y-coordinate of the point
  * @param iteration number of iterations calculated for this point
  */
-inline void drawPoint(double x, double y, int iteration)
+inline void drawPoint(const double x, const double y, const int iteration)
 {
     if (iteration == MAX_ITERATION)
     {
         glColor3d(0.0, 0.0, 0.0);
     }
-    else if (iteration < SECONDARY_COLOUR_ITERATION_CUTOFF)
+    else if (iteration < SECONDARY_COLOUR_IT_CUTOFF)
     {
-        glColor3d(R_SECONDARY[iteration], G_SECONDARY[iteration],
-                  B_SECONDARY[iteration]);
+        glColor3d(SECONDARY_COLOUR[iteration].R,
+                  SECONDARY_COLOUR[iteration].G,
+                  SECONDARY_COLOUR[iteration].B);
     }
     else
     {
-        glColor3d(1.0, G_PRIMARY[iteration], B_PRIMARY[iteration]);
+        glColor3d(PRIMARY_COLOUR[iteration].R,
+                  PRIMARY_COLOUR[iteration].G,
+                  PRIMARY_COLOUR[iteration].B);
     }
 
     glVertex2d(x, y);
@@ -50,11 +51,10 @@ inline void drawPoint(double x, double y, int iteration)
  *
  * @return number of iterations to diverge, up to MAX_ITERATIONS
  */
-inline int iterate(const std::complex<double>& c,
-                   std::complex<double> z)
+inline int iterate(const std::complex<double>& c, std::complex<double> z)
 {
     int iteration = 0;
-    while (std::norm(z) <= 4 && iteration < MAX_ITERATION)
+    while (std::norm(z) <= 4.0 && iteration < MAX_ITERATION)
     {
         z *= z;
         z += c;
@@ -75,8 +75,8 @@ void drawMandelbrotPoints(UserData* ud)
     {
         for (int pY = 0; pY < PRECISION; ++pY)
         {
-            std::complex<double> c(ud->viewLeft + (double)pX * step,
-                                        ud->viewBottom + (double)pY * step);
+            const std::complex<double> c(ud->viewLeft + (double)pX * step,
+                                         ud->viewBottom + (double)pY * step);
             std::complex<double> z0(0.0, 0.0);
             drawPoint(c.real(), c.imag(), iterate(c, z0));
         }
@@ -95,9 +95,9 @@ void drawJuliaPoints(UserData* ud)
     {
         for (int pY = 0; pY < PRECISION; ++pY)
         {
-            std::complex<double> c(ud->pointClicked);
+            const std::complex<double> c(ud->pointClicked);
             std::complex<double> z0(ud->viewLeft + (double)pX * step,
-                                         ud->viewBottom + (double)pY * step);
+                                    ud->viewBottom + (double)pY * step);
             drawPoint(z0.real(), z0.imag(), iterate(c, z0));
         }
     }
@@ -161,18 +161,21 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action,
                 ud->viewRight -= pan;
                 break;
             case GLFW_KEY_X:
-                viewSize /= 1.2;
+                viewSize /= ZOOM_STEP;
                 ud->viewLeft = viewCentreX - viewSize / 2.0;
                 ud->viewRight = viewCentreX + viewSize / 2.0;
                 ud->viewBottom = viewCentreY - viewSize / 2.0;
                 ud->viewTop = viewCentreY + viewSize / 2.0;
                 break;
             case GLFW_KEY_Z:
-                viewSize *= 1.2;
+                viewSize *= ZOOM_STEP;
                 ud->viewLeft = viewCentreX - viewSize / 2.0;
                 ud->viewRight = viewCentreX + viewSize / 2.0;
                 ud->viewBottom = viewCentreY - viewSize / 2.0;
                 ud->viewTop = viewCentreY + viewSize / 2.0;
+                break;
+            case GLFW_KEY_ESCAPE:
+                ud->loadDefaultValues();
                 break;
             default:
                 return;
@@ -197,9 +200,9 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         UserData* ud = ((UserData*)glfwGetWindowUserPointer(window));
         double cursorX, cursorY;
         glfwGetCursorPos(window, &cursorX, &cursorY);
-        double scaleFactor = (ud->viewRight - ud->viewLeft) / WINDOW_SIZE;
+        const double scaleFactor = (ud->viewRight - ud->viewLeft) / (double)WINDOW_SIZE;
         cursorX = cursorX * scaleFactor + ud->viewLeft;
-        cursorY = (cursorY * scaleFactor + ud->viewBottom) * -1;
+        cursorY = -1.0 * cursorY * scaleFactor + ud->viewTop;
         ud->pointClicked = std::complex<double>(cursorX, cursorY);
         ud->isJuliaSet = !ud->isJuliaSet;
         drawSet(window);
@@ -207,12 +210,14 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 }
 
 /**
- * @brief Initializes the window and sets initial OpenGL state.
+ * @brief Initializes the glfw window.
  *
  * @return pointer to the window that was created
  */
-GLFWwindow* initialize()
+GLFWwindow* initializeWindow()
 {
+    glfwWindowHint(GLFW_SAMPLES, 4);
+    
     GLFWwindow* window = glfwCreateWindow(WINDOW_SIZE, WINDOW_SIZE,
                                           "Mandelbrot Set", NULL, NULL);
     if (!window)
@@ -227,18 +232,40 @@ GLFWwindow* initialize()
     glfwSetWindowUserPointer(window, ud);
     glfwSetKeyCallback(window, keyCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
-
-    glClearColor(0.0, 0.0, 0.5, 1.0);
     
+    return window;
+}
+
+/**
+ * @brief Sets the initial OpenGL state.
+ *
+ * @param window glfw window
+ */
+void initializeGL(GLFWwindow* window)
+{
+    UserData* ud = (UserData*)glfwGetWindowUserPointer(window);
+    
+    glClearColor(0.0, 0.0, 0.5, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
-    glPointSize(2 * (800 / PRECISION));
+    
+    glPointSize(2.0 * ((double)WINDOW_SIZE / PRECISION));
     
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(ud->viewLeft, ud->viewRight, ud->viewBottom, ud->viewTop, -1.0,
             1.0);
-    
-    return window;
+}
+
+/**
+ * @brief Deallocates resources and terminates GLFW.
+ *
+ * @param window glfw window
+ */
+void cleanupWindow(GLFWwindow* window)
+{
+    delete (UserData*)glfwGetWindowUserPointer(window);
+    glfwDestroyWindow(window);
+    glfwTerminate();
 }
 
 int main(int argc, const char* argv[])
@@ -247,22 +274,22 @@ int main(int argc, const char* argv[])
     {
         return -1;
     }
-    GLFWwindow* window = initialize();
+    GLFWwindow* window = initializeWindow();
     if (!window)
     {
         return -1;
     }
     
+    initializeGL(window);
+    
     drawSet(window);
     
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+        glfwWaitEvents();
     }
     
-    delete (UserData*)glfwGetWindowUserPointer(window);
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    cleanupWindow(window);
     
     return 0;
 }

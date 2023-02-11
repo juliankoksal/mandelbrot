@@ -9,6 +9,11 @@
 
 UserData::UserData()
 {
+    loadDefaultValues();
+}
+
+void UserData::loadDefaultValues()
+{
     this->viewLeft = -2.0;
     this->viewRight = 0.5;
     this->viewBottom = -1.25;

@@ -10,83 +10,122 @@
 
 #include <array>
 
-constexpr int WINDOW_SIZE = 800;
-
-constexpr double PRECISION = 800;
-
-constexpr int MAX_ITERATION = 500;
-
-constexpr int PRIMARY_BRIGHTNESS_EXP = 10;
-
-constexpr int SECONDARY_BRIGHTNESS_EXP = 15;
-
-constexpr int SECONDARY_COLOUR_ITERATION_CUTOFF = 20;
-
-constexpr double PAN_STEP = 0.1;
-
-constexpr double ZOOM_STEP = 1.2;
-
-constexpr double POW(double base, int exponent)
+struct COLOUR
 {
-    double result = 1.0;
-    for (int i = 0; i < exponent; ++i)
+    double R;
+    double G;
+    double B;
+    double A;
+    consteval COLOUR(const double R = 1.0, const double G = 1.0,
+                     const double B = 1.0, const double A = 1.0)
+        : R(R), G(G), B(B), A(A)
     {
-        result *= base;
     }
-    return result;
 };
 
-constinit std::array<double, MAX_ITERATION> G_PRIMARY = []() {
-    std::array<double, MAX_ITERATION> result{};
+/**
+ * Width and height of the window in pixels.
+ */
+inline constexpr int WINDOW_SIZE = 800;
+
+/**
+ * Number of points drawn in a single row/column.
+ * Higher values will increase image quality at a large performance cost.
+ */
+inline constexpr double PRECISION = 800;
+
+/**
+ * Maximum number of iterations before a point is coloured black.
+ * Higher values will increase accuracy at a very large performance cost.
+ */
+inline constexpr int MAX_ITERATION = 500;
+
+/**
+ * Number of iterations associated with the last colour of the primary palette.
+ * Points which diverge after this number of iterations or more will all be
+ * coloured the same.
+ */
+inline constexpr int PRIMARY_COLOUR_MAX_IT = 100;
+
+/**
+ * Number of iterations associated with the last colour of the secondary palette.
+ * Points which diverge after this number of iterations or more will all be
+ * coloured the same.
+ */
+inline constexpr int SECONDARY_COLOUR_MAX_IT = 60;
+
+/**
+ * Points which diverge after less than this number of iterations will use the
+ * secondary colour palette instead of the primary palette.
+ */
+inline constexpr int SECONDARY_COLOUR_IT_CUTOFF = 20;
+
+/**
+ * Proportion of the view width/height to pan by on arrow key press.
+ */
+inline constexpr double PAN_STEP = 0.1;
+
+/**
+ * Factor to zoom in/out by on x/z key press.
+ */
+inline constexpr double ZOOM_STEP = 1.2;
+
+/**
+ * @brief Calculates the primary colour brightness factor.
+ *
+ * @param i number of iterations
+ *
+ * @return brightness factor from 0.0 to 1.0
+ */
+inline consteval double GET_BRIGHTNESS_PRIMARY(const double i)
+{
+    double proportion = i / PRIMARY_COLOUR_MAX_IT;
+    if (i > PRIMARY_COLOUR_MAX_IT)
+    {
+        proportion = 1.0;
+    }
+    return 1.0 - proportion;
+}
+
+inline constexpr std::array<COLOUR, MAX_ITERATION> PRIMARY_COLOUR =
+    []() consteval
+{
+    std::array<COLOUR, MAX_ITERATION> result;
     for (int i = 0; i < MAX_ITERATION; ++i)
     {
-        double proportion = i < 1000.0 ? (double)i / 1000.0 : 1.0;
-        double brightness = POW(1.0 - proportion, PRIMARY_BRIGHTNESS_EXP);
-        result[i] = 0.5 + (brightness * 0.5);
+        result[i].R = 1.0;
+        result[i].G = 0.5 + (GET_BRIGHTNESS_PRIMARY(i) * 0.5);
+        result[i].B = GET_BRIGHTNESS_PRIMARY(i);
     }
     return result;
 }();
 
-constinit std::array<double, MAX_ITERATION> B_PRIMARY = []() {
-    std::array<double, MAX_ITERATION> result{};
-    for (int i = 0; i < MAX_ITERATION; ++i)
+/**
+ * @brief Calculates the secondary colour brightness factor.
+ *
+ * @param i number of iterations
+ *
+ * @return brightness factor from 0.0 to 1.0
+ */
+inline consteval double GET_BRIGHTNESS_SECONDARY(const double i)
+{
+    double proportion = i / SECONDARY_COLOUR_MAX_IT;
+    if (i > SECONDARY_COLOUR_MAX_IT)
     {
-        double proportion = i < 1000.0 ? (double)i / 1000.0 : 1.0;
-        double brightness = POW(1.0 - proportion, PRIMARY_BRIGHTNESS_EXP);
-        result[i] = brightness;
+        proportion = 1.0;
     }
-    return result;
-}();
+    return 1.0 - proportion;
+}
 
-constinit std::array<double, MAX_ITERATION> R_SECONDARY = []() {
-    std::array<double, MAX_ITERATION> result{};
+inline constexpr std::array<COLOUR, MAX_ITERATION> SECONDARY_COLOUR =
+    []() consteval
+{
+    std::array<COLOUR, MAX_ITERATION> result;
     for (int i = 0; i < MAX_ITERATION; ++i)
     {
-        double proportion = i < 1000.0 ? (double)i / 1000.0 : 1.0;
-        double brightness = POW(1.0 - proportion, SECONDARY_BRIGHTNESS_EXP);
-        result[i] = 1.0 - brightness;
-    }
-    return result;
-}();
-
-constinit std::array<double, MAX_ITERATION> G_SECONDARY = []() {
-    std::array<double, MAX_ITERATION> result{};
-    for (int i = 0; i < MAX_ITERATION; ++i)
-    {
-        double proportion = i < 1000.0 ? (double)i / 1000.0 : 1.0;
-        double brightness = POW(1.0 - proportion, SECONDARY_BRIGHTNESS_EXP);
-        result[i] = 1.0 - brightness;
-    }
-    return result;
-}();
-
-constinit std::array<double, MAX_ITERATION> B_SECONDARY = []() {
-    std::array<double, MAX_ITERATION> result{};
-    for (int i = 0; i < MAX_ITERATION; ++i)
-    {
-        double proportion = i < 1000.0 ? (double)i / 1000.0 : 1.0;
-        double brightness = POW(1.0 - proportion, SECONDARY_BRIGHTNESS_EXP);
-        result[i] = 1.0 - brightness * 0.7;
+        result[i].R = 1.0 - GET_BRIGHTNESS_SECONDARY(i);
+        result[i].G = 1.0 - GET_BRIGHTNESS_SECONDARY(i);
+        result[i].B = 1.0 - GET_BRIGHTNESS_SECONDARY(i) * 0.7;
     }
     return result;
 }();

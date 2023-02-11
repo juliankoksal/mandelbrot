@@ -9,6 +9,7 @@
 
 void Mandelbrot::calculateSet(UserData& ud)
 {
+#ifndef GRADIENT
     if (ud.isJuliaSet)
     {
         calculateJuliaPoints(ud);
@@ -17,6 +18,9 @@ void Mandelbrot::calculateSet(UserData& ud)
     {
         calculateMandelbrotPoints(ud);
     }
+#else
+    calculateGradientPoints(ud);
+#endif
 }
 
 void Mandelbrot::calculateMandelbrotPoints(UserData& ud)
@@ -79,3 +83,14 @@ void Mandelbrot::calculateJuliaPointsThread(UserData& ud, int start)
         }
     }
 }
+
+void Mandelbrot::calculateGradientPoints(UserData& ud)
+{
+    for (int x = 0; x < PRECISION; ++x)
+    {
+        for (int y = 0; y < PRECISION; ++y)
+        {
+            ud.renderBuffer[x][y] = x;
+        }
+    }
+};

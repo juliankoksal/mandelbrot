@@ -9,7 +9,7 @@
 
 GLFWwindow* initializeWindow()
 {
-    glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_SAMPLES, MSAA);
     
     GLFWwindow* window = glfwCreateWindow(WINDOW_SIZE, WINDOW_SIZE,
                                           "Mandelbrot Set", NULL, NULL);

@@ -16,10 +16,10 @@ std::complex<double> Algorithms::coordToComplex(const double x, const double y,
                                 y * scaleFactor + translateY);
 };
 
-int Algorithms::iterate(const std::complex<double>& c, std::complex<double> z)
+int Algorithms::iterate(const std::complex<double> c, std::complex<double> z)
 {
     int iteration = 0;
-    while (std::norm(z) <= 4.0 && iteration < MAX_ITERATION)
+    while (std::norm(z) <= 4.0 && iteration < MAX_ITERATIONS)
     {
         z *= z;
         z += c;

@@ -29,7 +29,7 @@ inline constexpr int PRECISION = 800;
  * Maximum number of iterations before a point is coloured black.
  * Higher values will increase accuracy at a large performance cost.
  */
-inline constexpr int MAX_ITERATION = 1000;
+inline constexpr int MAX_ITERATIONS = 1000;
 
 /**
  * Number of threads to use for calculating the set.
@@ -37,7 +37,12 @@ inline constexpr int MAX_ITERATION = 1000;
  * performance.
  */
 inline constexpr int NUM_THREADS = 8;
-static_assert(NUM_THREADS >= 1, "NUM_THREADS cannot be less than 1.");
+
+/**
+ * Number of sample points for multi-sampling anti-aliasing.
+ * Higher values increase quality at a small performance cost.
+ */
+inline constexpr int MSAA = 4;
 
 /**
  * Proportion of the view width/height to pan by on arrow key press.
@@ -108,30 +113,41 @@ inline consteval double GET_BRIGHTNESS_PRIMARY(const int i, const int iMin,
 /**
  * Primary colour palette.
  */
-inline constexpr std::array<COLOUR, MAX_ITERATION> PRIMARY_COLOUR =
+inline constexpr std::array<COLOUR, MAX_ITERATIONS> PRIMARY_COLOUR =
     []() consteval
 {
-    std::array<COLOUR, MAX_ITERATION> result;
-    int i = 0;
-    for (; i < 100 && i < MAX_ITERATION; ++i)
+    std::array<COLOUR, MAX_ITERATIONS> result;
+    int i = SECONDARY_COLOUR_IT_CUTOFF;
+    // White to yellow
+    for (; i < 50 && i < MAX_ITERATIONS; ++i)
     {
         result[i].R = 1.0;
-        result[i].G = 0.5 + (GET_BRIGHTNESS_PRIMARY(i, 0, 99) * 0.5);
-        result[i].B = GET_BRIGHTNESS_PRIMARY(i, 0, 99);
+        result[i].G = 1.0;
+        result[i].B = GET_BRIGHTNESS_PRIMARY(i, SECONDARY_COLOUR_IT_CUTOFF, 49);
     }
-    for (; i < 400 && i < MAX_ITERATION; ++i)
+    // Yellow to orange
+    for (; i < 150 && i < MAX_ITERATIONS; ++i)
     {
-        result[i].R = 0.5 + (GET_BRIGHTNESS_PRIMARY(i, 100, 399) * 0.5);
-        result[i].G = 0.0 + (GET_BRIGHTNESS_PRIMARY(i, 100, 399) * 0.5);
+        result[i].R = 1.0;
+        result[i].G = 0.5 + (GET_BRIGHTNESS_PRIMARY(i, 50, 149) * 0.5);
         result[i].B = 0.0;
     }
-    for (; i < 800 && i < MAX_ITERATION; ++i)
+    // Orange to red
+    for (; i < 400 && i < MAX_ITERATIONS; ++i)
+    {
+        result[i].R = 0.5 + (GET_BRIGHTNESS_PRIMARY(i, 150, 399) * 0.5);
+        result[i].G = 0.0 + (GET_BRIGHTNESS_PRIMARY(i, 150, 399) * 0.5);
+        result[i].B = 0.0;
+    }
+    // Red to very dark red
+    for (; i < 800 && i < MAX_ITERATIONS; ++i)
     {
         result[i].R = 0.1 + (GET_BRIGHTNESS_PRIMARY(i, 400, 799) * 0.4);
         result[i].G = 0.0;
         result[i].B = 0.0;
     }
-    for (; i < MAX_ITERATION; ++i)
+    // Very dark red
+    for (; i < MAX_ITERATIONS; ++i)
     {
         result[i].R = 0.1;
         result[i].G = 0.0;
@@ -139,13 +155,6 @@ inline constexpr std::array<COLOUR, MAX_ITERATION> PRIMARY_COLOUR =
     }
     return result;
 }();
-
-/**
- * Number of iterations associated with the last colour of the secondary palette.
- * Points which diverge after this number of iterations or more will all be
- * coloured the same.
- */
-inline constexpr int SECONDARY_COLOUR_MAX_IT = SECONDARY_COLOUR_IT_CUTOFF * 3;
 
 /**
  * @brief Calculates the secondary colour brightness factor.
@@ -156,8 +165,8 @@ inline constexpr int SECONDARY_COLOUR_MAX_IT = SECONDARY_COLOUR_IT_CUTOFF * 3;
  */
 inline consteval double GET_BRIGHTNESS_SECONDARY(const double i)
 {
-    double proportion = i / SECONDARY_COLOUR_MAX_IT;
-    if (i > SECONDARY_COLOUR_MAX_IT)
+    double proportion = i / SECONDARY_COLOUR_IT_CUTOFF;
+    if (i > SECONDARY_COLOUR_IT_CUTOFF)
     {
         proportion = 1.0;
     }
@@ -167,14 +176,14 @@ inline consteval double GET_BRIGHTNESS_SECONDARY(const double i)
 /**
  * Secondary colour palette.
  */
-inline constexpr std::array<COLOUR, MAX_ITERATION> SECONDARY_COLOUR =
+inline constexpr std::array<COLOUR, MAX_ITERATIONS> SECONDARY_COLOUR =
     []() consteval
 {
-    std::array<COLOUR, MAX_ITERATION> result;
-    for (int i = 0; i < MAX_ITERATION; ++i)
+    std::array<COLOUR, MAX_ITERATIONS> result;
+    for (int i = 0; i < MAX_ITERATIONS; ++i)
     {
-        result[i].R = 1.0 - GET_BRIGHTNESS_SECONDARY(i);
-        result[i].G = 1.0 - GET_BRIGHTNESS_SECONDARY(i);
+        result[i].R = 0.8 - GET_BRIGHTNESS_SECONDARY(i);
+        result[i].G = 0.9 - GET_BRIGHTNESS_SECONDARY(i);
         result[i].B = 1.0 - GET_BRIGHTNESS_SECONDARY(i) * 0.7;
     }
     return result;

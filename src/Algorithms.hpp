@@ -22,7 +22,7 @@ namespace Algorithms
  * @param y world y-coordinate
  * @param scaleFactor factor to scale by
  * @param translateX translate x by this amount after scaling
- * @param translateY translate y by this amount after scaling 
+ * @param translateY translate y by this amount after scaling
  */
 std::complex<double> coordToComplex(const double x, const double y,
                                     const double scaleFactor,
@@ -37,7 +37,7 @@ std::complex<double> coordToComplex(const double x, const double y,
  *
  * @return number of iterations to diverge, up to MAX_ITERATIONS
  */
-int iterate(const std::complex<double>& c, std::complex<double> z);
+int iterate(const std::complex<double> c, std::complex<double> z);
 
 }
 

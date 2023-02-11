@@ -35,7 +35,7 @@ void Graphics::drawPoints(std::array<std::array<int, PRECISION>, PRECISION>&
 
 void Graphics::drawPoint(const double x, const double y, const int iteration)
 {
-    if (iteration == MAX_ITERATION)
+    if (iteration == MAX_ITERATIONS)
     {
         glColor3d(0.0, 0.0, 0.0);
     }

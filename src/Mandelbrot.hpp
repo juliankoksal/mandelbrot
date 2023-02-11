@@ -8,6 +8,9 @@
 #ifndef Mandelbrot_h
 #define Mandelbrot_h
 
+// DEBUG: Define to draw colour gradient instead of the Mandelbrot set.
+//#define GRADIENT
+
 #include <thread>
 
 #include "Algorithms.hpp"
@@ -52,6 +55,13 @@ void calculateJuliaPoints(UserData& ud);
  * @param start calculates every [number of threads] points, starting from here
  */
 void calculateJuliaPointsThread(UserData& ud, int start);
+
+/**
+ * @brief DEBUG: Writes a colour gradient to ud.renderBuffer.
+ *
+ * @param ud user data, results are written to renderBuffer
+ */
+void calculateGradientPoints(UserData& ud);
 
 }
 

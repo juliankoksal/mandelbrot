@@ -14,7 +14,8 @@ UserData::UserData()
 
 void UserData::loadDefaultValues()
 {
-    this->scaleFactor = 0.003125;
+    this->renderBuffer =  std::array<std::array<int, PRECISION>, PRECISION>();
+    this->scaleFactor = 2.5 / PRECISION;
     this->translateX = -2.0;
     this->translateY = -1.25;
     this->isJuliaSet = false;

@@ -23,6 +23,8 @@ struct COLOUR
     }
 };
 
+inline constexpr int NUM_THREADS = 6;
+
 /**
  * Width and height of the window in pixels.
  */
@@ -30,15 +32,17 @@ inline constexpr int WINDOW_SIZE = 800;
 
 /**
  * Number of points drawn in a single row/column.
- * Higher values will increase image quality at a large performance cost.
+ * Higher values will increase image quality at a very large performance cost.
  */
-inline constexpr double PRECISION = 800;
+inline constexpr int PRECISION = 800;
+
+inline constexpr double WINDOW_COORD_FACTOR = (double)PRECISION / (double)WINDOW_SIZE;
 
 /**
  * Maximum number of iterations before a point is coloured black.
- * Higher values will increase accuracy at a very large performance cost.
+ * Higher values will increase accuracy at a large performance cost.
  */
-inline constexpr int MAX_ITERATION = 500;
+inline constexpr int MAX_ITERATION = 2000;
 
 /**
  * Points which diverge after less than this number of iterations will use the
@@ -58,6 +62,9 @@ inline constexpr int SECONDARY_COLOUR_MAX_IT = SECONDARY_COLOUR_IT_CUTOFF * 3;
  */
 inline constexpr double PAN_STEP = 0.1;
 
+/**
+ * Number of points to pan by.
+ */
 inline constexpr double PAN = PAN_STEP * PRECISION;
 
 /**
@@ -79,6 +86,9 @@ inline consteval double GET_BRIGHTNESS_PRIMARY(const int i, const int iMin,
     return 1.0 - proportion;
 }
 
+/**
+ * Primary colour palette.
+ */
 inline constexpr std::array<COLOUR, MAX_ITERATION> PRIMARY_COLOUR =
     []() consteval
 {
@@ -128,6 +138,9 @@ inline consteval double GET_BRIGHTNESS_SECONDARY(const double i)
     return 1.0 - proportion;
 }
 
+/**
+ * Secondary colour palette.
+ */
 inline constexpr std::array<COLOUR, MAX_ITERATION> SECONDARY_COLOUR =
     []() consteval
 {

@@ -8,19 +8,13 @@
 //#define GRADIENT
 
 #include <complex>
+#include <thread>
 
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
 #include "Constants.hpp"
 #include "UserData.hpp"
-
-std::complex<double> coordToComplex(const double x, const double y,
-                                    UserData& ud)
-{
-    return std::complex<double>(x * ud.scaleFactor + ud.translateX,
-                                y * ud.scaleFactor + ud.translateY);
-};
 
 /**
  * @brief Draws a point at (x, y) with the colour determined by iteration.
@@ -50,6 +44,31 @@ void drawPoint(const double x, const double y, const int iteration)
 
     glVertex2d(x, y);
 }
+
+/**
+ * @brief Draws all points in the buffer.
+ *
+ * @param buffer array of iteration counts for each point
+ */
+void drawPoints(std::array<std::array<int, PRECISION>, PRECISION>& buffer)
+{
+    glBegin(GL_POINTS);
+    for (int x = 0; x < PRECISION; ++x)
+    {
+        for (int y = 0; y < PRECISION; ++y)
+        {
+            drawPoint(x, y, buffer[x][y]);
+        }
+    }
+    glEnd();
+}
+
+std::complex<double> coordToComplex(const double x, const double y,
+                                    UserData& ud)
+{
+    return std::complex<double>(x * ud.scaleFactor + ud.translateX,
+                                y * ud.scaleFactor + ud.translateY);
+};
 
 /**
  * @brief Iterates the Mandelbrot function for the given value of c and z0.
@@ -82,29 +101,35 @@ void drawGradient()
     }
 }
 
+void calculateMandelbrotPointsThread(UserData& ud, int start)
+{
+    std::complex<double> z0(0.0, 0.0);
+    for (int pX = start; pX < PRECISION; pX += NUM_THREADS)
+    {
+        for (int pY = 0; pY < PRECISION; ++pY)
+        {
+            const std::complex<double> c = coordToComplex(pX, pY, ud);
+            ud.renderBuffer[pX][pY] = iterate(c, z0);
+        }
+    }
+}
+
 /**
  * @brief Draws the points of the Mandelbrot set.
  *
  * @param ud user data giving the scale and translation parameters
  */
-void drawMandelbrotPoints(UserData& ud)
+void calculateMandelbrotPoints(UserData& ud)
 {
 #ifndef GRADIENT
-    ud.allPointsMaxIterations = true;
-    std::complex<double> z0(0.0, 0.0);
-    for (int pX = 0; pX < PRECISION; ++pX)
+    std::array<std::thread, NUM_THREADS> threads;
+    for (int i = 0; i < NUM_THREADS; ++i)
     {
-        for (int pY = 0; pY < PRECISION; ++pY)
-        {
-            const std::complex<double> c = coordToComplex(pX, pY, ud);
-            int iterations = iterate(c, z0);
-            if (iterations < MAX_ITERATION)
-            {
-                ud.allPointsMaxIterations = false;
-                ud.allPointsMaxIterationsScaleFactor = ud.scaleFactor;
-            }
-            drawPoint(pX, pY, iterations);
-        }
+        threads[i] = std::thread(calculateMandelbrotPointsThread, std::ref(ud), i);
+    }
+    for (int i = 0; i < NUM_THREADS; ++i)
+    {
+        threads[i].join();
     }
 #endif
 #ifdef GRADIENT
@@ -112,27 +137,33 @@ void drawMandelbrotPoints(UserData& ud)
 #endif
 }
 
+void calculateJuliaPointsThread(UserData& ud, int start)
+{
+    for (int pX = start; pX < PRECISION; pX += NUM_THREADS)
+    {
+        for (int pY = 0; pY < PRECISION; ++pY)
+        {
+            std::complex<double> z0 = coordToComplex(pX, pY, ud);
+            ud.renderBuffer[pX][pY] = iterate(ud.pointClicked, z0);
+        }
+    }
+}
+
 /**
  * @brief Draws the points of the Julia set for the point that was clicked.
  *
  * @param ud user data giving the scale and translation parameters
  */
-void drawJuliaPoints(UserData& ud)
+void calculateJuliaPoints(UserData& ud)
 {
-    ud.allPointsMaxIterations = true;
-    for (int pX = 0; pX < PRECISION; ++pX)
+    std::array<std::thread, NUM_THREADS> threads;
+    for (int i = 0; i < NUM_THREADS; ++i)
     {
-        for (int pY = 0; pY < PRECISION; ++pY)
-        {
-            std::complex<double> z0 = coordToComplex(pX, pY, ud);
-            int iterations = iterate(ud.pointClicked, z0);
-            if (iterations < MAX_ITERATION)
-            {
-                ud.allPointsMaxIterations = false;
-                ud.allPointsMaxIterationsScaleFactor = ud.scaleFactor;
-            }
-            drawPoint(pX, pY, iterations);
-        }
+        threads[i] = std::thread(calculateJuliaPointsThread, std::ref(ud), i);
+    }
+    for (int i = 0; i < NUM_THREADS; ++i)
+    {
+        threads[i].join();
     }
 }
 
@@ -144,16 +175,15 @@ void drawJuliaPoints(UserData& ud)
 void drawSet(GLFWwindow* window)
 {
     UserData& ud = *(UserData*)glfwGetWindowUserPointer(window);
-    glBegin(GL_POINTS);
     if (ud.isJuliaSet)
     {
-        drawJuliaPoints(ud);
+        calculateJuliaPoints(ud);
     }
     else
     {
-        drawMandelbrotPoints(ud);
+        calculateMandelbrotPoints(ud);
     }
-    glEnd();
+    drawPoints(ud.renderBuffer);
     glfwSwapBuffers(window);
 }
 
@@ -189,19 +219,11 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action,
                 ud.scaleFactor *= ZOOM_STEP;
                 ud.translateX -= ud.scaleFactor * PAN;
                 ud.translateY -= ud.scaleFactor * PAN;
-                if (ud.scaleFactor < ud.allPointsMaxIterationsScaleFactor)
-                {
-                    return;
-                }
                 break;
             case GLFW_KEY_X:
                 ud.scaleFactor /= ZOOM_STEP;
                 ud.translateX += ud.scaleFactor * PAN;
                 ud.translateY += ud.scaleFactor * PAN;
-                if (ud.allPointsMaxIterations)
-                {
-                    return;
-                }
                 break;
             case GLFW_KEY_ESCAPE:
                 ud.loadDefaultValues();
@@ -226,7 +248,9 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         UserData& ud = *((UserData*)glfwGetWindowUserPointer(window));
         double cursorX, cursorY;
         glfwGetCursorPos(window, &cursorX, &cursorY);
-        ud.pointClicked = coordToComplex(cursorX, PRECISION - cursorY, ud);
+        ud.pointClicked = coordToComplex(cursorX * WINDOW_COORD_FACTOR,
+                                         ((double)WINDOW_SIZE - cursorY) * WINDOW_COORD_FACTOR,
+                                         ud);
         ud.isJuliaSet = !ud.isJuliaSet;
         drawSet(window);
     }
@@ -269,11 +293,11 @@ void initializeGL(GLFWwindow* window)
     glClearColor(0.0, 0.0, 0.5, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     
-    glPointSize(2.0 * ((double)WINDOW_SIZE / PRECISION));
+    glPointSize(2.0 * ((double)WINDOW_SIZE / (double)PRECISION));
     
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(0, PRECISION, 0, PRECISION, -1.0, 1.0);
+    glOrtho(0, (double)PRECISION, 0, (double)PRECISION, -1.0, 1.0);
 }
 
 /**

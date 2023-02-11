@@ -8,22 +8,23 @@
 #ifndef UserData_hpp
 #define UserData_hpp
 
+#include <array>
 #include <complex>
+
+#include "Constants.hpp"
 
 /**
  * @brief Represents the current state of the program.
  */
 struct UserData
 {
+    std::array<std::array<int, PRECISION>, PRECISION> renderBuffer;
+    
     double scaleFactor;
     
     double translateX;
     
     double translateY;
-    
-    bool allPointsMaxIterations;
-    
-    double allPointsMaxIterationsScaleFactor;
     
     /**
      * @brief True if a Julia set is currently displayed, false if Mandelbrot.

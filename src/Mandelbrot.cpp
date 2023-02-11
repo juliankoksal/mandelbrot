@@ -5,12 +5,11 @@
 //  Created by Julian Koksal on 2023-02-05.
 //
 
-#define GL_SILENCE_DEPRECATION
-
-#include <iostream>
+//#define GRADIENT
 
 #include <complex>
 
+#include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
 #include "Constants.hpp"
@@ -72,6 +71,17 @@ int iterate(const std::complex<double>& c, std::complex<double> z)
     return iteration;
 }
 
+void drawGradient()
+{
+    for (int pX = 0; pX < PRECISION; ++pX)
+    {
+        for (int pY = 0; pY < PRECISION; ++pY)
+        {
+            drawPoint(pX, pY, pX >= MAX_ITERATION ? 0 : pX);
+        }
+    }
+}
+
 /**
  * @brief Draws the points of the Mandelbrot set.
  *
@@ -79,6 +89,7 @@ int iterate(const std::complex<double>& c, std::complex<double> z)
  */
 void drawMandelbrotPoints(UserData& ud)
 {
+#ifndef GRADIENT
     ud.allPointsMaxIterations = true;
     std::complex<double> z0(0.0, 0.0);
     for (int pX = 0; pX < PRECISION; ++pX)
@@ -95,6 +106,10 @@ void drawMandelbrotPoints(UserData& ud)
             drawPoint(pX, pY, iterations);
         }
     }
+#endif
+#ifdef GRADIENT
+    drawGradient();
+#endif
 }
 
 /**

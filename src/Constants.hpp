@@ -65,6 +65,8 @@ inline constexpr int SECONDARY_COLOUR_IT_CUTOFF = 20;
  */
 inline constexpr double PAN_STEP = 0.1;
 
+inline constexpr double PAN = PAN_STEP * PRECISION;
+
 /**
  * Factor to zoom in/out by on x/z key press.
  */

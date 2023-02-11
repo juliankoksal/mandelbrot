@@ -7,12 +7,21 @@
 
 #define GL_SILENCE_DEPRECATION
 
+#include <iostream>
+
 #include <complex>
 
 #include <GLFW/glfw3.h>
 
 #include "Constants.hpp"
 #include "UserData.hpp"
+
+std::complex<double> coordToComplex(const double x, const double y,
+                                    UserData& ud)
+{
+    return std::complex<double>(x * ud.scaleFactor + ud.translateX,
+                                y * ud.scaleFactor + ud.translateY);
+};
 
 /**
  * @brief Draws a point at (x, y) with the colour determined by iteration.
@@ -21,7 +30,7 @@
  * @param y y-coordinate of the point
  * @param iteration number of iterations calculated for this point
  */
-inline void drawPoint(const double x, const double y, const int iteration)
+void drawPoint(const double x, const double y, const int iteration)
 {
     if (iteration == MAX_ITERATION)
     {
@@ -51,7 +60,7 @@ inline void drawPoint(const double x, const double y, const int iteration)
  *
  * @return number of iterations to diverge, up to MAX_ITERATIONS
  */
-inline int iterate(const std::complex<double>& c, std::complex<double> z)
+int iterate(const std::complex<double>& c, std::complex<double> z)
 {
     int iteration = 0;
     while (std::norm(z) <= 4.0 && iteration < MAX_ITERATION)
@@ -68,17 +77,22 @@ inline int iterate(const std::complex<double>& c, std::complex<double> z)
  *
  * @param ud user data giving the scale and translation parameters
  */
-void drawMandelbrotPoints(UserData* ud)
+void drawMandelbrotPoints(UserData& ud)
 {
-    double step = (ud->viewRight - ud->viewLeft) / PRECISION;
+    ud.allPointsMaxIterations = true;
+    std::complex<double> z0(0.0, 0.0);
     for (int pX = 0; pX < PRECISION; ++pX)
     {
         for (int pY = 0; pY < PRECISION; ++pY)
         {
-            const std::complex<double> c(ud->viewLeft + (double)pX * step,
-                                         ud->viewBottom + (double)pY * step);
-            std::complex<double> z0(0.0, 0.0);
-            drawPoint(c.real(), c.imag(), iterate(c, z0));
+            const std::complex<double> c = coordToComplex(pX, pY, ud);
+            int iterations = iterate(c, z0);
+            if (iterations < MAX_ITERATION)
+            {
+                ud.allPointsMaxIterations = false;
+                ud.allPointsMaxIterationsScaleFactor = ud.scaleFactor;
+            }
+            drawPoint(pX, pY, iterations);
         }
     }
 }
@@ -88,17 +102,21 @@ void drawMandelbrotPoints(UserData* ud)
  *
  * @param ud user data giving the scale and translation parameters
  */
-void drawJuliaPoints(UserData* ud)
+void drawJuliaPoints(UserData& ud)
 {
-    double step = (ud->viewRight - ud->viewLeft) / PRECISION;
+    ud.allPointsMaxIterations = true;
     for (int pX = 0; pX < PRECISION; ++pX)
     {
         for (int pY = 0; pY < PRECISION; ++pY)
         {
-            const std::complex<double> c(ud->pointClicked);
-            std::complex<double> z0(ud->viewLeft + (double)pX * step,
-                                    ud->viewBottom + (double)pY * step);
-            drawPoint(z0.real(), z0.imag(), iterate(c, z0));
+            std::complex<double> z0 = coordToComplex(pX, pY, ud);
+            int iterations = iterate(ud.pointClicked, z0);
+            if (iterations < MAX_ITERATION)
+            {
+                ud.allPointsMaxIterations = false;
+                ud.allPointsMaxIterationsScaleFactor = ud.scaleFactor;
+            }
+            drawPoint(pX, pY, iterations);
         }
     }
 }
@@ -106,13 +124,13 @@ void drawJuliaPoints(UserData* ud)
 /**
  * @brief Draws the Mandelbrot/Julia set.
  *
- * @param window glfw window
+ * @param window GLFW window
  */
 void drawSet(GLFWwindow* window)
 {
-    UserData* ud = (UserData*)glfwGetWindowUserPointer(window);
+    UserData& ud = *(UserData*)glfwGetWindowUserPointer(window);
     glBegin(GL_POINTS);
-    if (ud->isJuliaSet)
+    if (ud.isJuliaSet)
     {
         drawJuliaPoints(ud);
     }
@@ -137,52 +155,45 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action,
 {
     if (action == GLFW_PRESS)
     {
-        UserData* ud = ((UserData*)glfwGetWindowUserPointer(window));
-        double viewSize = (ud->viewRight - ud->viewLeft);
-        double pan = PAN_STEP * viewSize;
-        double viewCentreX = (ud->viewLeft + ud->viewRight) / 2.0;
-        double viewCentreY = (ud->viewBottom + ud->viewTop) / 2.0;
+        UserData& ud = *((UserData*)glfwGetWindowUserPointer(window));
         switch (key)
         {
-            case GLFW_KEY_UP:
-                ud->viewBottom += pan;
-                ud->viewTop += pan;
-                break;
-            case GLFW_KEY_DOWN:
-                ud->viewBottom -= pan;
-                ud->viewTop -= pan;
+            case GLFW_KEY_LEFT:
+                ud.translateX -= ud.scaleFactor * PAN;
                 break;
             case GLFW_KEY_RIGHT:
-                ud->viewLeft += pan;
-                ud->viewRight += pan;
+                ud.translateX += ud.scaleFactor * PAN;
                 break;
-            case GLFW_KEY_LEFT:
-                ud->viewLeft -= pan;
-                ud->viewRight -= pan;
+            case GLFW_KEY_DOWN:
+                ud.translateY -= ud.scaleFactor * PAN;
                 break;
-            case GLFW_KEY_X:
-                viewSize /= ZOOM_STEP;
-                ud->viewLeft = viewCentreX - viewSize / 2.0;
-                ud->viewRight = viewCentreX + viewSize / 2.0;
-                ud->viewBottom = viewCentreY - viewSize / 2.0;
-                ud->viewTop = viewCentreY + viewSize / 2.0;
+            case GLFW_KEY_UP:
+                ud.translateY += ud.scaleFactor * PAN;
                 break;
             case GLFW_KEY_Z:
-                viewSize *= ZOOM_STEP;
-                ud->viewLeft = viewCentreX - viewSize / 2.0;
-                ud->viewRight = viewCentreX + viewSize / 2.0;
-                ud->viewBottom = viewCentreY - viewSize / 2.0;
-                ud->viewTop = viewCentreY + viewSize / 2.0;
+                ud.scaleFactor *= ZOOM_STEP;
+                ud.translateX -= ud.scaleFactor * PAN;
+                ud.translateY -= ud.scaleFactor * PAN;
+                if (ud.scaleFactor < ud.allPointsMaxIterationsScaleFactor)
+                {
+                    return;
+                }
+                break;
+            case GLFW_KEY_X:
+                ud.scaleFactor /= ZOOM_STEP;
+                ud.translateX += ud.scaleFactor * PAN;
+                ud.translateY += ud.scaleFactor * PAN;
+                if (ud.allPointsMaxIterations)
+                {
+                    return;
+                }
                 break;
             case GLFW_KEY_ESCAPE:
-                ud->loadDefaultValues();
+                ud.loadDefaultValues();
                 break;
             default:
                 return;
         }
-        glLoadIdentity();
-        glOrtho(ud->viewLeft, ud->viewRight, ud->viewBottom, ud->viewTop, -1.0,
-                1.0);
         drawSet(window);
     }
 }
@@ -197,14 +208,11 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
     {
-        UserData* ud = ((UserData*)glfwGetWindowUserPointer(window));
+        UserData& ud = *((UserData*)glfwGetWindowUserPointer(window));
         double cursorX, cursorY;
         glfwGetCursorPos(window, &cursorX, &cursorY);
-        const double scaleFactor = (ud->viewRight - ud->viewLeft) / (double)WINDOW_SIZE;
-        cursorX = cursorX * scaleFactor + ud->viewLeft;
-        cursorY = -1.0 * cursorY * scaleFactor + ud->viewTop;
-        ud->pointClicked = std::complex<double>(cursorX, cursorY);
-        ud->isJuliaSet = !ud->isJuliaSet;
+        ud.pointClicked = coordToComplex(cursorX, PRECISION - cursorY, ud);
+        ud.isJuliaSet = !ud.isJuliaSet;
         drawSet(window);
     }
 }
@@ -243,8 +251,6 @@ GLFWwindow* initializeWindow()
  */
 void initializeGL(GLFWwindow* window)
 {
-    UserData* ud = (UserData*)glfwGetWindowUserPointer(window);
-    
     glClearColor(0.0, 0.0, 0.5, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
     
@@ -252,8 +258,7 @@ void initializeGL(GLFWwindow* window)
     
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glOrtho(ud->viewLeft, ud->viewRight, ud->viewBottom, ud->viewTop, -1.0,
-            1.0);
+    glOrtho(0, PRECISION, 0, PRECISION, -1.0, 1.0);
 }
 
 /**

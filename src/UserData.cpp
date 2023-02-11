@@ -14,9 +14,8 @@ UserData::UserData()
 
 void UserData::loadDefaultValues()
 {
-    this->viewLeft = -2.0;
-    this->viewRight = 0.5;
-    this->viewBottom = -1.25;
-    this->viewTop = 1.25;
+    this->scaleFactor = 0.003125;
+    this->translateX = -2.0;
+    this->translateY = -1.25;
     this->isJuliaSet = false;
 }

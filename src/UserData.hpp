@@ -15,25 +15,15 @@
  */
 struct UserData
 {
-    /**
-     * @brief Left bound of the viewing volume.
-     */
-    double viewLeft;
+    double scaleFactor;
     
-    /**
-     * @brief Right bound of the viewing volume.
-     */
-    double viewRight;
+    double translateX;
     
-    /**
-     * @brief Bottom bound of the viewing volume.
-     */
-    double viewBottom;
+    double translateY;
     
-    /**
-     * @brief Top bound of the viewing volume.
-     */
-    double viewTop;
+    bool allPointsMaxIterations;
+    
+    double allPointsMaxIterationsScaleFactor;
     
     /**
      * @brief True if a Julia set is currently displayed, false if Mandelbrot.

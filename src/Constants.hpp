@@ -10,20 +10,9 @@
 
 #include <array>
 
-struct COLOUR
-{
-    double R;
-    double G;
-    double B;
-    double A;
-    consteval COLOUR(const double R = 1.0, const double G = 1.0,
-                     const double B = 1.0, const double A = 1.0)
-        : R(R), G(G), B(B), A(A)
-    {
-    }
-};
-
-inline constexpr int NUM_THREADS = 6;
+/*
+ * Configuration
+ */
 
 /**
  * Width and height of the window in pixels.
@@ -36,26 +25,19 @@ inline constexpr int WINDOW_SIZE = 800;
  */
 inline constexpr int PRECISION = 800;
 
-inline constexpr double WINDOW_COORD_FACTOR = (double)PRECISION / (double)WINDOW_SIZE;
-
 /**
  * Maximum number of iterations before a point is coloured black.
  * Higher values will increase accuracy at a large performance cost.
  */
-inline constexpr int MAX_ITERATION = 2000;
+inline constexpr int MAX_ITERATION = 1000;
 
 /**
- * Points which diverge after less than this number of iterations will use the
- * secondary colour palette instead of the primary palette.
+ * Number of threads to use for calculating the set.
+ * Higher values up to the number of CPU cores will greatly increase
+ * performance.
  */
-inline constexpr int SECONDARY_COLOUR_IT_CUTOFF = 20;
-
-/**
- * Number of iterations associated with the last colour of the secondary palette.
- * Points which diverge after this number of iterations or more will all be
- * coloured the same.
- */
-inline constexpr int SECONDARY_COLOUR_MAX_IT = SECONDARY_COLOUR_IT_CUTOFF * 3;
+inline constexpr int NUM_THREADS = 8;
+static_assert(NUM_THREADS >= 1, "NUM_THREADS cannot be less than 1.");
 
 /**
  * Proportion of the view width/height to pan by on arrow key press.
@@ -63,14 +45,51 @@ inline constexpr int SECONDARY_COLOUR_MAX_IT = SECONDARY_COLOUR_IT_CUTOFF * 3;
 inline constexpr double PAN_STEP = 0.1;
 
 /**
+ * Factor to zoom in/out by on x/z key press.
+ */
+inline constexpr double ZOOM_STEP = 1.2;
+
+/**
+ * Points which diverge after less than this number of iterations will use the
+ * secondary colour palette instead of the primary palette.
+ */
+inline constexpr int SECONDARY_COLOUR_IT_CUTOFF = 20;
+
+
+/*
+ * Derived constants
+ */
+
+/**
  * Number of points to pan by.
  */
 inline constexpr double PAN = PAN_STEP * PRECISION;
 
 /**
- * Factor to zoom in/out by on x/z key press.
+ * Factor to convert window coordinates to world coordinates.
  */
-inline constexpr double ZOOM_STEP = 1.2;
+inline constexpr double WINDOW_COORD_FACTOR = (double)PRECISION / (double)WINDOW_SIZE;
+
+
+/*
+ * Colour palettes
+ */
+
+/**
+ * @brief Constant initialized RGBA colour.
+ */
+struct COLOUR
+{
+    double R;
+    double G;
+    double B;
+    double A;
+    consteval COLOUR(const double R = 1.0, const double G = 1.0,
+                     const double B = 1.0, const double A = 1.0)
+        : R(R), G(G), B(B), A(A)
+    {
+    }
+};
 
 /**
  * @brief Calculates the primary colour brightness factor.
@@ -120,6 +139,13 @@ inline constexpr std::array<COLOUR, MAX_ITERATION> PRIMARY_COLOUR =
     }
     return result;
 }();
+
+/**
+ * Number of iterations associated with the last colour of the secondary palette.
+ * Points which diverge after this number of iterations or more will all be
+ * coloured the same.
+ */
+inline constexpr int SECONDARY_COLOUR_MAX_IT = SECONDARY_COLOUR_IT_CUTOFF * 3;
 
 /**
  * @brief Calculates the secondary colour brightness factor.

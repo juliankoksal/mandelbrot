@@ -4,7 +4,7 @@ CXX = g++
 CXXFLAGS = -std=c++20 -I/opt/homebrew/include -Ofast
 LDLIBS = -L/opt/homebrew/lib -lglfw -framework opengl
 
-MAIN = Mandelbrot
+MAIN = Main
 MAIN_OBJ = $(patsubst src/%,target/%,$(patsubst %.cpp,%.o,$(wildcard $(addprefix src/,$(addsuffix .cpp,$(MAIN))))))
 OBJ = $(patsubst src/%,target/%,$(patsubst %.cpp,%.o,$(wildcard src/*.cpp)))
 MKDIR_P = @ mkdir -p $(@D)

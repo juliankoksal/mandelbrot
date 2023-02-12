@@ -2,7 +2,8 @@
 
 CXX = g++
 CXXFLAGS = -std=c++20 -I/opt/homebrew/include -Ofast
-LDLIBS = -L/opt/homebrew/lib -lglfw -framework opengl
+LDFLAGS = -L/opt/homebrew/lib
+LDLIBS = -lglfw -framework opengl
 
 MAIN = Main
 MAIN_OBJ = $(patsubst %,target/%.o,$(MAIN))
@@ -20,7 +21,7 @@ MKDIR_P = @ mkdir -p $(@D)
 all: $(MAIN)
 
 %: $(filter-out $(MAIN_OBJ),$(OBJ)) target/%.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+	$(CXX) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 # OBJECTS
 

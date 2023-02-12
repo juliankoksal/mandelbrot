@@ -23,7 +23,7 @@ Date: 2022-02-12
 
 Target platform is ARM64 MacOS with GLFW installed via Homebrew.
 
-`CXX_FLAGS` and `LD_LIBS` in the Makefile will need to be changed to build on other platforms.
+`CXXFLAGS`, `LDFLAGS`, and `LDLIBS` in the Makefile will need to be changed to build on other platforms.
 
 ### Dependencies
 

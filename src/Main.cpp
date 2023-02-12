@@ -9,6 +9,7 @@
 
 GLFWwindow* initializeWindow()
 {
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     glfwWindowHint(GLFW_SAMPLES, MSAA);
     
     GLFWwindow* window = glfwCreateWindow(WINDOW_SIZE, WINDOW_SIZE,

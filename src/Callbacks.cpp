@@ -28,9 +28,9 @@ void Callbacks::keyCallback(GLFWwindow* window, int key, int scancode,
                 ud.translateY += ud.scaleFactor * PAN;
                 break;
             case GLFW_KEY_Z:
-                ud.scaleFactor *= ZOOM_STEP;
                 ud.translateX -= ud.scaleFactor * PAN;
                 ud.translateY -= ud.scaleFactor * PAN;
+                ud.scaleFactor *= ZOOM_STEP;
                 break;
             case GLFW_KEY_X:
                 ud.scaleFactor /= ZOOM_STEP;

@@ -18,5 +18,4 @@ void UserData::loadDefaultValues()
     this->scaleFactor = 2.5 / PRECISION;
     this->translateX = -2.0;
     this->translateY = -1.25;
-    this->isJuliaSet = false;
 }
